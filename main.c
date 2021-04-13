@@ -4,6 +4,9 @@
 #include <assert.h>
 #include <unistd.h>
 
+
+// FUNCTION PROTOTYPES
+void interval_clock();
 void signal_generator();
 
 sharedCounters *sharedMem;
@@ -50,6 +53,14 @@ int main() {
     } else if ((signal_handler_4 = fork()) == 0) {
         signal_handler(SIGUSR2);
     }
+}
+
+// FUNCTION TO GET INTERVAL FOR SLEEP B/T 0.01 AND 0.1 SECONDS
+void interval_clock() {
+    srand(time(NULL));
+    int randint;
+    randint = rand() % (100000 + 1 - 10000) + 10000; // get random number between 0.01 and 0.01 seconds
+    usleep(randint);
 }
 
 // FUNCTION THAT GENERATES EITHER SIGUSR1 OR SIGUSR2
