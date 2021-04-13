@@ -8,6 +8,7 @@
 // FUNCTION PROTOTYPES
 void interval_clock();
 void signal_generator();
+void signal_handler(int sig);
 
 // STRUCT FOR sharedCounters
 typedef struct sharedCounters {
@@ -88,4 +89,27 @@ void signal_generator() {
     srand(time(NULL));
 }
 
+// FUNCTION WRAPPER FOR HANDLER
+void signal_handler(int sig) {
 
+    signal(SIGTERM, exit_handler);
+
+    // unblock the signal that this process is handling so that it can receive the signal
+    if (sig == SIGUSR1) unblock_sig1();
+    if (sig == SIGUSR2) unblock_sig2();
+
+    // set the handler function for the specified signal
+    if (signal(sig, handler) == SIG_ERR) {
+        fflush(stdout);
+        printf("error setting handler!");
+        return;
+    }
+
+    // wait in a loop for signals
+    while (!sharedMem->kill_flag) {
+        sleep(1);
+    }
+
+    shmdt(sharedMem);
+    exit(EXIT_SUCCESS);
+}
