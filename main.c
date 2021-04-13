@@ -58,7 +58,7 @@ int main() {
     } else if ((signal_gen_proc_3 = fork()) == 0) {
         signal_generator();
 
-    // create 2 processes for SIGUSR1 and 2 processes for SIGUSR2
+        // create 2 processes for SIGUSR1 and 2 processes for SIGUSR2
     } else if ((signal_handler_1 = fork()) == 0) {
         signal_handler(SIGUSR1);
     } else if ((signal_handler_2 = fork()) == 0) {
@@ -67,6 +67,10 @@ int main() {
         signal_handler(SIGUSR2);
     } else if ((signal_handler_4 = fork()) == 0) {
         signal_handler(SIGUSR2);
+
+        // create 1 process for reporting
+    } else if ((reporter_proc = fork()) == 0) {
+        reporter();
     }
 }
 
