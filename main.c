@@ -4,9 +4,15 @@
 #include <assert.h>
 #include <unistd.h>
 
+void signal_generator();
+
 sharedCounters *sharedMem;
 FILE *log_file = NULL;
 
+int mode = 0;
+int sig_1_handled = 0, sig_2_handled = 0;
+
+// MAIN FUNCTION
 int main() {
 
     int status;
@@ -43,5 +49,13 @@ int main() {
         signal_handler(SIGUSR2);
     } else if ((signal_handler_4 = fork()) == 0) {
         signal_handler(SIGUSR2);
-
+    }
 }
+
+// FUNCTION THAT GENERATES EITHER SIGUSR1 OR SIGUSR2
+void signal_generator() {
+    int status;
+    srand(time(NULL));
+}
+
+
