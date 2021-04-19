@@ -79,13 +79,100 @@ int main() {
         //create 1 process for reporting
     } else if ((reporter_proc = fork()) == 0) {
         reporter();
+
+        //stay in parent process
+    } else {
+        //run for 30 secs or 100,000 signals
+        if (mode) {
+            sleep(30);
+        } else {
+            while (1) {
+                pthread_mutex_lock(&(sharedMem->sig_1_received_lock));
+                pthread_mutex_lock(&(sharedMem->sig_2_received_lock));
+
+                if (sharedMem->num_sig_2_received + sharedMem->num_sig_1_received >= 100000)
+                    break;
+
+                if (sharedMem->num_sig_2_received > 0 && sharedMem->num_sig_2_received + sharedMem->num_sig_1_received % 1000 == 0) {
+                    fflush(stdout);
+                    printf("1000 signals\n");
+                }
+
+                pthread_mutex_unlock(&(sharedMem->sig_1_received_lock));
+                pthread_mutex_unlock(&(sharedMem->sig_2_received_lock));
+                sleep(1);
+            }
+        }
+
+        //end all the children processes
+        pthread_mutex_lock(&(sharedMem->kill_lock));
+        sharedMem->kill_flag = 1;
+        pthread_mutex_unlock(&(sharedMem->kill_lock));
+
+        kill(signal_gen_proc_1, SIGTERM);
+        kill(signal_gen_proc_2, SIGTERM);
+        kill(signal_gen_proc_3, SIGTERM);
+        kill(signal_handler_1, SIGTERM);
+        kill(signal_handler_2, SIGTERM);
+        kill(signal_handler_3, SIGTERM);
+        kill(signal_handler_4, SIGTERM);
+        kill(reporter_proc, SIGTERM);
+
+        while (wait(&status) > 0);
+
+        shmdt(sharedMem);
+        shmctl(shm_id, IPC_RMID, NULL);
+
+        return EXIT_SUCCESS;
     }
+
+    shmdt(sharedMem);
+    return EXIT_SUCCESS;
 }
 
 //FUNCTION THAT GENERATES EITHER SIGUSR1 OR SIGUSR2
 void signal_generator() {
     int status;
     srand(time(NULL));
+
+    signal(SIGTERM, exit_handler);
+
+    while (1) {
+
+        interval_clock(); //sleep before next signal
+
+        if (rand() % 2) {
+
+            //critical section - lock and then send signal and increment counter
+            pthread_mutex_lock(&(sharedMem->sig_1_sent_lock));
+
+            //send signal to every process in this process group
+            if ((status = kill(0, SIGUSR1)) < 0) {
+                fflush(stderr);
+                fprintf(stderr, "error: generating SIGUSR1: %i\n", status);
+                exit(EXIT_FAILURE);
+            }
+
+            sharedMem->num_sig_1_sent += 1;
+            pthread_mutex_unlock(&(sharedMem->sig_1_sent_lock));
+
+        } else {
+
+            //critical section - lock and then send signal and increment counter
+            pthread_mutex_lock(&(sharedMem->sig_2_sent_lock));
+
+            //send signal to every process in this process group
+            if ((status = kill(0, SIGUSR2)) < 0) {
+                fflush(stderr);
+                fprintf(stderr, "error: generating SIGUSR2: %i\n", status);
+                exit(EXIT_FAILURE);
+            }
+
+            sharedMem->num_sig_2_sent += 1;
+            pthread_mutex_unlock(&(sharedMem->sig_2_sent_lock));
+        }
+
+    }
 }
 
 //FUNCTION WRAPPER FOR HANDLER
@@ -130,6 +217,14 @@ void handler(int sig) {
         sharedMem->num_sig_2_received++;
         pthread_mutex_unlock(&(sharedMem->sig_2_received_lock));
     }
+}
+
+//FUNCTION WRAPPER FOR REPORTER
+void reporter_handler(int sig) {
+    if (sig == SIGUSR1)
+        sig_1_handled++;
+    else if (sig == SIGUSR2)
+        sig_2_handled++;
 }
 
 //FUNCTION TO EXIT HANDLER
