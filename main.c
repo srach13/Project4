@@ -6,6 +6,8 @@
 #include <signal.h>
 #include <sys/shm.h>
 #include <pthread.h>
+#include <sys/wait.h>
+#include <memory.h>
 
 #include "utilities.c"
 
@@ -225,6 +227,79 @@ void reporter_handler(int sig) {
         sig_1_handled++;
     else if (sig == SIGUSR2)
         sig_2_handled++;
+}
+
+//FUNCTION TO LOG SIGNAL EVENTS
+void reporter() {
+
+    log_file = fopen("log.txt", "w");
+    if (log_file == NULL) {
+        fflush(stderr);
+        perror("error: could not open log file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    time_t rawTime;
+    struct tm * timeInfo;
+    char * timeStr;
+
+    struct timeval start, stop;
+
+    //unblock SIGUSR1 and SIGUSR2 to let the reporter process handle them
+    unblock_sig1();
+    unblock_sig2();
+
+    //add handler for signals
+    if (signal(SIGUSR1, reporter_handler) == SIG_ERR) {
+        fflush(stdout);
+        printf("error setting handler!");
+    }
+
+    if (signal(SIGUSR2, reporter_handler) == SIG_ERR) {
+        fflush(stdout);
+        printf("error setting handler!");
+    }
+
+    if (signal(SIGTERM, exit_handler) == SIG_ERR) {
+        fflush(stdout);
+        printf("error setting handler!");
+    }
+
+    gettimeofday(&start, NULL);
+
+    while (1) {
+
+        //every 10 signals, exclude initial condition of 0 signals
+        if (sig_1_handled > 1 && (sig_1_handled + sig_2_handled) % 10 == 0) {
+            gettimeofday(&stop, NULL);
+            double diff = (stop.tv_sec + (1.0/1000000) * stop.tv_usec) - (start.tv_sec + (1.0/1000000) * start.tv_usec);
+
+            //get a system time
+            time(&rawTime);
+            timeInfo = localtime(&rawTime);
+            timeStr = asctime(timeInfo);
+            timeStr[strlen(timeStr) - 1] = '\0';
+
+            pthread_mutex_lock(&(sharedMem->sig_1_received_lock));
+            pthread_mutex_lock(&(sharedMem->sig_2_received_lock));
+            pthread_mutex_lock(&(sharedMem->sig_1_sent_lock));
+            pthread_mutex_lock(&(sharedMem->sig_2_sent_lock));
+
+            fflush(log_file);
+            fprintf(log_file, "[%s] %i SIGUSR1 sent, %i SIGUSR2 sent, %i SIGUSR1 received, %i SIGUSR2 received, "
+                              "avg %.3lf sec between SIGUSR1, avg %.3lf sec between SIGUSR2\n",
+                    timeStr, sharedMem->num_sig_1_sent, sharedMem->num_sig_2_sent,
+                    sharedMem->num_sig_1_received, sharedMem->num_sig_2_received,
+                    diff/sharedMem->num_sig_1_received, diff/sharedMem->num_sig_2_received);
+
+            pthread_mutex_unlock(&(sharedMem->sig_1_received_lock));
+            pthread_mutex_unlock(&(sharedMem->sig_2_received_lock));
+            pthread_mutex_unlock(&(sharedMem->sig_1_sent_lock));
+            pthread_mutex_unlock(&(sharedMem->sig_2_sent_lock));
+        }
+
+        sleep(1);
+    }
 }
 
 //FUNCTION TO EXIT HANDLER
