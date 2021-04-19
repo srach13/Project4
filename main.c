@@ -14,6 +14,7 @@ void signal_generator();
 void signal_handler(int sig);
 void handler(int sig);
 void exit_handler(int sig);
+void reporter();
 
 //STRUCT FOR sharedCounters
 typedef struct sharedCounters {
@@ -51,6 +52,8 @@ int main() {
     sharedMem->num_sig_2_received = 0;
     sharedMem->kill_flag = 0;
 
+    init_locks(sharedMem);
+
     pid_t signal_gen_proc_1, signal_gen_proc_2, signal_gen_proc_3;
     pid_t signal_handler_1, signal_handler_2, signal_handler_3, signal_handler_4;
     pid_t reporter_proc;
@@ -75,7 +78,7 @@ int main() {
 
         //create 1 process for reporting
     } else if ((reporter_proc = fork()) == 0) {
-        //reporter();
+        reporter();
     }
 }
 
