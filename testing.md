@@ -1,1 +1,6 @@
+# Testing
+In order to test my program, I used the top command and log file. One of the initial issues I had with my code was that the parent process was not properly killing the children processes. To test this, I would run the program, and then run the top command. If the parent was properly ending the 8 children, then the table of processes should not include any instances of `main'. It took a few attempts and code variations to get this working.
 
+For my testing, I alternated between small times and signal batches. For example, I would run the program for 15 seconds and trace through the log file to make sure that signals were being sent and received properly. I would also run the program until 100, 500, or 1000 signals were received and do the same tracing. 
+
+One issue I had was with receiving the expected number of signals. I tried testing my code using 0.09-0.9 second intervals in the generator processes, and I also noticed that I was getting a different ratio of signals received to sent when I ran on my local server versus on the Linux server.

@@ -1,1 +1,17 @@
 # Project4
+
+### Shared Memory
+In my program, I created a `struct` `sharedCounters` to contain all of the counters that need to be shared between the 9 processes. I also created an exit flag to let the children known when to stop running. For each of these 5 variables, I also defined an associated lock in `sharedCounters`.
+
+### Parent Process
+In my main file, there is a pointer to `sharedCounters` as a global variable. In the main function, I allocated a shared memory region of the size of the `struct`, attached it to my parent process (and thereby the children through forking) and pointed the global `sharedCounters` to it. Then, I initialized all 4 mutex locks and set the counters to 0. Here, I also blocked `SIGUSR1` and `SIGUSR2` for the appropriate processes and unblock them for handling. I define 8 `pid_t`, one for each of the child processes. I named them based on what that child should do in the final submission (send, receive, or report). After forking for each of the 8 children, the child calls into its respective function: `signal_generator`, `signal_handler`, or `reporter`. The parent enters into a waiting period of either 30 seconds or 100,000 received signals, based on the global `mode` variable and whether it is set to 0 or 1. After this waiting period expires, the parent kills all 8 children with `SIGTERM`. There is a generic exit handler that is assigned to `SIGTERM` in every child process that allows the children to exit gracefully (including detaching from shared memory) when they receive the signal. The parent then detaches from and deallocates the shared memory region before exiting.
+
+### Signal Generator Processes
+In my signal generator, both `SIGUSR1` and `SIGUSR2` remain blocked. Each of these 3 children enter into an infinite while-loop in which they pick between `SIGUSR1` and `SIGUSR2`, send the signal to all processes in the process group, lock the corresponding lock, increment the corresponding counter, and then unlock the mutex lock. Each process then sleeps for a random amount of time between 0.01 and 0.1 seconds, and then continues to the next iteration of the loop. At the start of each iteration, the generators check the exit flag. If the exit flag is set, then they return to the main method, detach from shared memory, and exit.
+
+### Signal Handler Processes
+In my program, there are a total of 4 signal handlers. When the parent forks, it assigns two of the children to handle `SIGUSR1` and two of the children to handle `SIGUSR2`, based on a function parameter. I used a wrapper handler and a handler. In the wrapper, each process unblocks the corresponding signal, and then sets the signal handler for the specified signal. The process continues to loop until terminated and handles signals whenever they are received.
+
+### Signal Reporter Process
+The reporter process works similarly to the handler processes. The process calls into a reporter function that unblocks `SIGUSR1` and `SIGUSR2`, and then sets both signals to the same signal handler. The handler unshared increments counters for each signal. Every time the reporter counts 10 signals total, it logs the total number of times each signal has been sent and received, based on the shared counters. The reporter also keeps track of the amount of time that passes between each log (i.e. every 10 signals), and uses this time to calculate the average time it took to receive each `SIGUSR1` and `SIGUSR2`. The reporter process also notes the time at which the logging occurs.
+

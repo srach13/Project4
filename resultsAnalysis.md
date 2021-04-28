@@ -1,0 +1,3 @@
+# Results Analysis
+
+Since there are two signal handlers for each signal, I expected there to be roughly twice as many signals to be received as sent. In my tests, I had roughly a 1:1 ratio of signals sent to signals received. Sometimes, I received slightly fewer signals than I sent, and other times slightly more. I checked that my handlers and generators were working properly, which they seemed to be. I traced through my code and placed print statements to try and debug any issues, but I could not find the source of this error in my code. I wasn't sure why I was not receiving the expected number of signals.
